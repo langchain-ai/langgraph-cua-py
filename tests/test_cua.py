@@ -35,8 +35,14 @@ async def test_browser_interaction():
         ),
     ]
 
+    # Enable/disable different handling of messages based on whether or not ZDR is enabled
+    zdr_enabled = True
+
     # Stream the graph execution
-    stream = graph.astream({"messages": messages}, {"streamMode": ["custom", "updates"]})
+    stream = graph.astream(
+        {"messages": messages},
+        {"streamMode": ["custom", "updates"], "configurable": {"zdr_enabled": zdr_enabled}},
+    )
 
     # Process the stream updates
     async for update in stream:

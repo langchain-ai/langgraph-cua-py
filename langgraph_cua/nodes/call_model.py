@@ -3,7 +3,7 @@ from typing import Any, Dict, Optional
 from langchain_core.messages import AIMessageChunk
 from langchain_openai import ChatOpenAI
 
-from ..types import CUAState
+from ..types import CUAState, get_configuration_with_defaults
 
 
 def get_openai_env_from_state_env(env: str) -> str:
@@ -42,12 +42,17 @@ async def call_model(state: CUAState) -> Dict[str, Any]:
     Returns:
         The updated state with the model's response.
     """
+    config = get_configuration_with_defaults(state)
     messages = state.get("messages", [])
     previous_response_id: Optional[str] = None
     last_message = messages[-1] if messages else None
 
     # Check if the last message is a tool message
-    if last_message and getattr(last_message, "type", None) == "tool":
+    if (
+        last_message
+        and getattr(last_message, "type", None) == "tool"
+        and config["zdr_enabled"] is False
+    ):
         # If it's a tool message, check if the second-to-last message is an AI message
         if (
             len(messages) >= 2
@@ -55,13 +60,6 @@ async def call_model(state: CUAState) -> Dict[str, Any]:
             and hasattr(messages[-2], "response_metadata")
         ):
             previous_response_id = messages[-2].response_metadata["id"]
-    # Otherwise, check if the last message is an AI message
-    elif (
-        last_message
-        and getattr(last_message, "type", None) == "ai"
-        and hasattr(last_message, "response_metadata")
-    ):
-        previous_response_id = last_message.response_metadata["id"]
 
     llm = ChatOpenAI(
         model="computer-use-preview",
@@ -79,7 +77,11 @@ async def call_model(state: CUAState) -> Dict[str, Any]:
     response: AIMessageChunk
 
     # Check if the last message is a tool message
-    if last_message and getattr(last_message, "type", None) == "tool":
+    if (
+        last_message
+        and getattr(last_message, "type", None) == "tool"
+        and config["zdr_enabled"] is False
+    ):
         if previous_response_id is None:
             raise ValueError("Cannot process tool message without a previous_response_id")
 

@@ -67,10 +67,12 @@ class CUAConfiguration(TypedDict):
             This can be provided in the configuration, or set as an environment variable (SCRAPYBARA_API_KEY).
         timeout_hours: The number of hours to keep the virtual machine running before it times out.
             Must be between 0.01 and 24. Default is 1.
+        zdr_enabled: Whether or not Zero Data Retention is enabled in the user's OpenAI account. Default False.
     """
 
     scrapybara_api_key: str  # API key for Scrapybara
     timeout_hours: float  # Timeout in hours (0.01-24, default: 1)
+    zdr_enabled: bool  # True/False for whether or not ZDR is enabled.
 
 
 def get_configuration_with_defaults(config: RunnableConfig) -> Dict[str, Any]:
@@ -91,5 +93,10 @@ def get_configuration_with_defaults(config: RunnableConfig) -> Dict[str, Any]:
         or os.environ.get("SCRAPYBARA_API_KEY")
     )
     timeout_hours = configurable_fields.get("timeout_hours", 1)
+    zdr_enabled = configurable_fields.get("zdr_enabled", False)
 
-    return {"scrapybara_api_key": scrapybara_api_key, "timeout_hours": timeout_hours}
+    return {
+        "scrapybara_api_key": scrapybara_api_key,
+        "timeout_hours": timeout_hours,
+        "zdr_enabled": zdr_enabled,
+    }
