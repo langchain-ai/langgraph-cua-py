@@ -141,7 +141,7 @@ def handle_computer_call(page: Page, computer_call: dict):
             raise ValueError(f"Unknown action type received: {action_type}")
 
         time.sleep(1)
-        screenshot = page.screenshot()
+        screenshot = page.screenshot(timeout=15000)
         b64_screenshot = base64.b64encode(screenshot).decode("utf-8")
         screenshot_url = f"data:image/png;base64,{b64_screenshot}"
         output_content = {

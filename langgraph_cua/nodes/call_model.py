@@ -48,7 +48,7 @@ def get_available_tools(configuration: Dict[str, Any]) -> List[Dict[str, Any]]:
         session_params = configuration.get("session_params", {})
         screen_config = (
             session_params.get(
-                "screen_config", {"width": DEFAULT_DISPLAY_WIDTH, "height": DEFAULT_DISPLAY_HEIGHT}
+                "screen", {"width": DEFAULT_DISPLAY_WIDTH, "height": DEFAULT_DISPLAY_HEIGHT}
             )
             if session_params
             else {"width": DEFAULT_DISPLAY_WIDTH, "height": DEFAULT_DISPLAY_HEIGHT}
