@@ -10,53 +10,7 @@ from langgraph_cua import create_cua
 load_dotenv()
 
 
-@pytest.mark.asyncio
-async def test_browser_interaction():
-    """
-    Test that the agent can interact with the browser.
-    This is a port of the TypeScript test to Python.
-    """
-    graph = create_cua()
-
-    # Create input messages similar to the TypeScript test
-    messages = [
-        {
-            "role": "system",
-            "content": (
-                "You're an advanced AI computer use assistant. The browser you are using "
-                "is already initialized, and visiting google.com."
-            ),
-        },
-        # {
-        #     "role": "user",
-        #     "content": (
-        #         "I'm looking for a new camera. Help me find the best one. It should be 4k resolution, "
-        #         "by Cannon, and under $1000. I want a digital camera, and I'll be using it mainly for photography."
-        #     )
-        # },
-        {
-            "role": "user",
-            "content": (
-                "I want to contribute to the LangGraph.js project. Please find the GitHub repository, and inspect the read me, "
-                "along with some of the issues and open pull requests. Then, report back with a plan of action to contribute."
-            ),
-        },
-    ]
-
-    # Enable/disable different handling of messages based on whether or not ZDR is enabled
-    zdr_enabled = True
-
-    # Stream the graph execution
-    stream = graph.astream(
-        {"messages": messages},
-        stream_mode="updates",
-        config={
-            "configurable": {"zdr_enabled": zdr_enabled},
-            "recursion_limit": 100,
-        },
-    )
-
-    # Process the stream updates
+async def process_stream(stream):
     async for update in stream:
         print("\n---UPDATE---\n")
 
@@ -130,3 +84,99 @@ async def test_browser_interaction():
                     print(messages.content)
         else:
             print(update)
+
+
+@pytest.mark.asyncio
+async def test_browser_interaction():
+    """
+    Test that the agent can interact with the browser.
+    This is a port of the TypeScript test to Python.
+    """
+    graph = create_cua()
+
+    # Create input messages similar to the TypeScript test
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You're an advanced AI computer use assistant. The browser you are using "
+                "is already initialized, and visiting google.com."
+            ),
+        },
+        # {
+        #     "role": "user",
+        #     "content": (
+        #         "I'm looking for a new camera. Help me find the best one. It should be 4k resolution, "
+        #         "by Cannon, and under $1000. I want a digital camera, and I'll be using it mainly for photography."
+        #     )
+        # },
+        {
+            "role": "user",
+            "content": (
+                "I want to contribute to the LangGraph.js project. Please find the GitHub repository, and inspect the read me, "
+                "along with some of the issues and open pull requests. Then, report back with a plan of action to contribute."
+            ),
+        },
+    ]
+
+    # Enable/disable different handling of messages based on whether or not ZDR is enabled
+    zdr_enabled = True
+
+    # Stream the graph execution
+    stream = graph.astream(
+        {"messages": messages},
+        stream_mode="updates",
+        config={
+            "configurable": {"zdr_enabled": zdr_enabled},
+            "recursion_limit": 100,
+        },
+    )
+
+    await process_stream(stream)
+
+
+@pytest.mark.asyncio
+async def test_browser_interaction_hyperbrowser():
+    """
+    Test that the agent can interact with the browser using Hyperbrowser.
+    """
+    graph = create_cua(provider="hyperbrowser")
+
+    # Create input messages similar to the TypeScript test
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You're an advanced AI computer use assistant. You are utilising a Chrome Browser with internet access."
+                "It is already open and running .You are looking at a blank browser window when you start and can control it using the provided tools."
+                "If you are on a blank page, you should use the go_to_url tool to navigate to the relevant website, "
+                "or if you need to search for something, go to https://www.google.com and search for it."
+            ),
+        },
+        # {
+        #     "role": "user",
+        #     "content": (
+        #         "I'm looking for a new camera. Help me find the best one. It should be 4k resolution, "
+        #         "by Cannon, and under $1000. I want a digital camera, and I'll be using it mainly for photography."
+        #     )
+        # },
+        {
+            "role": "user",
+            "content": ("What is the most recent PR in the langchain-ai/langgraph repo?"),
+        },
+    ]
+
+    # Enable/disable different handling of messages based on whether or not ZDR is enabled
+    zdr_enabled = True
+
+    # Stream the graph execution
+    stream = graph.astream(
+        {"messages": messages},
+        stream_mode="updates",
+        config={
+            "configurable": {"zdr_enabled": zdr_enabled, "provider": "hyperbrowser"},
+            "recursion_limit": 100,
+        },
+    )
+
+    await process_stream(stream)
