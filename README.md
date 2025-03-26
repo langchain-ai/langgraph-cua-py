@@ -25,9 +25,14 @@ pip install langgraph-cua
 
 ## Quickstart
 
-This project supports two providers for accessing virtual machines:
-1. [Scrapybara](https://scrapybara.com/) (default)
-2. [Hyperbrowser](https://hyperbrowser.ai/)
+## Supported Providers
+
+This project supports two different providers for computer interaction:
+
+1. **[Scrapybara](https://scrapybara.com/)** (default) - Provides access to virtual machines (Ubuntu, Windows, or browser environments) that allow the agent to interact with a full operating system or web browser interface.
+
+2. **[Hyperbrowser](https://hyperbrowser.ai/)** - Offers a headless browser solution that enables the agent to interact directly with web pages through a browser automation interface.
+
 
 ### Using Scrapybara (Default)
 
@@ -88,6 +93,9 @@ if __name__ == "__main__":
     import asyncio
     asyncio.run(main())
 ```
+The above example will invoke the graph, passing in a request for it to do some research into LangGraph.js from 
+the standpoint of a new contributor. The code will log the stream URL, which you can open in your browser to 
+view the CUA stream.
 
 ### Using Hyperbrowser
 
@@ -150,10 +158,6 @@ if __name__ == "__main__":
     import asyncio
     asyncio.run(main())
 ```
-
-The above example will invoke the graph, passing in a request for it to do some research into LangGraph.js from 
-the standpoint of a new contributor. The code will log the stream URL, which you can open in your browser to 
-view the CUA stream.
 
 You can find more examples inside the [`examples` directory](./examples/).
 

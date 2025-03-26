@@ -29,6 +29,8 @@ def take_action_or_end(state: CUAState):
         return END
 
     tool_outputs = additional_kwargs.get("tool_outputs")
+
+    # Function calls are stored in the `tool_calls` attribute of the last message
     tool_calls = getattr(last_message, "tool_calls", [])
 
     if not is_computer_tool_call(tool_outputs) and len(tool_calls) == 0:
