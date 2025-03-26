@@ -96,7 +96,7 @@ def create_cua(
         hyperbrowser_api_key: The API key to use for Hyperbrowser.
             This can be provided in the configuration, or set as an environment variable (HYPERBROWSER_API_KEY).
             Only applies if 'provider' is set to "hyperbrowser".
-        session_params: The parameters to use for the browser session.
+        session_params: The parameters to use for the Hyperbrowser browser session.
             Only applies if 'provider' is set to "hyperbrowser".
         timeout_hours: The number of hours to keep the virtual machine running before it times out.
             Must be between 0.01 and 24. Default is 1.

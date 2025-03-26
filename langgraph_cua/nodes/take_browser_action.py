@@ -165,7 +165,7 @@ def handle_computer_call(page: Page, computer_call: dict):
         )
 
 
-def take_browser_action(state: CUAState, config: RunnableConfig) -> Dict[str, Any]:
+def take_hyperbrowser_action(state: CUAState, config: RunnableConfig) -> Dict[str, Any]:
     """
     Executes browser actions based on the tool call in the last message.
     Args:
