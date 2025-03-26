@@ -82,8 +82,13 @@ class CUAConfiguration(TypedDict):
     """Configuration for the Computer Use Agent.
 
     Attributes:
+        provider: The provider to use. Default is "scrapybara".
         scrapybara_api_key: The API key to use for Scrapybara.
             This can be provided in the configuration, or set as an environment variable (SCRAPYBARA_API_KEY).
+        hyperbrowser_api_key: The API key to use for Hyperbrowser.
+            This can be provided in the configuration, or set as an environment variable (HYPERBROWSER_API_KEY).
+        session_params: Parameters to use for configuring the Hyperbrowser session, such as screen dimensions.
+            For more information on the available parameters, see the [Hyperbrowser API documentation](https://docs.hyperbrowser.ai/sessions/overview/session-parameters). Note that the parameters will be snake_case for usage with the Hyperbrowser Python SDK.
         timeout_hours: The number of hours to keep the virtual machine running before it times out.
             Must be between 0.01 and 24. Default is 1.
         zdr_enabled: Whether or not Zero Data Retention is enabled in the user's OpenAI account. If True,
@@ -97,6 +102,7 @@ class CUAConfiguration(TypedDict):
             be passed as a system message
     """
 
+    provider: Optional[Provider]  # The provider to use. Default is "scrapybara".
     scrapybara_api_key: Optional[str]  # API key for Scrapybara
     timeout_hours: Optional[float]  # Timeout in hours (0.01-24, default: 1)
     zdr_enabled: Optional[bool]  # True/False for whether or not ZDR is enabled.
@@ -105,6 +111,8 @@ class CUAConfiguration(TypedDict):
         Literal["web", "ubuntu", "windows"]
     ]  # The environment to use. Default is "web".
     prompt: Optional[Union[str, SystemMessage]]  # The initial prompt to use for the conversation
+    hyperbrowser_api_key: Optional[str]  # API key for Hyperbrowser
+    session_params: Optional[Dict[str, Any]]  # Parameters for Hyperbrowser session
 
 
 def get_configuration_with_defaults(config: RunnableConfig) -> Dict[str, Any]:
