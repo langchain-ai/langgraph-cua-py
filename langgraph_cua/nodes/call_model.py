@@ -1,10 +1,10 @@
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from langchain_core.messages import AIMessageChunk, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 from langchain_openai import ChatOpenAI
 
-from ..types import CUAState, get_configuration_with_defaults
+from ..types import CUAState, Provider, get_configuration_with_defaults
 
 
 def get_openai_env_from_state_env(env: str) -> str:
@@ -31,6 +31,68 @@ def get_openai_env_from_state_env(env: str) -> str:
 # Scrapybara does not allow for configuring this. Must use a hardcoded value.
 DEFAULT_DISPLAY_WIDTH = 1024
 DEFAULT_DISPLAY_HEIGHT = 768
+
+
+def get_available_tools(configuration: Dict[str, Any]) -> List[Dict[str, Any]]:
+    provider = configuration.get("provider")
+    if provider == Provider.Scrapybara:
+        return [
+            {
+                "type": "computer_use_preview",
+                "display_width": DEFAULT_DISPLAY_WIDTH,
+                "display_height": DEFAULT_DISPLAY_HEIGHT,
+                "environment": get_openai_env_from_state_env(configuration.get("environment")),
+            }
+        ]
+    elif provider == Provider.Hyperbrowser:
+        session_params = configuration.get("session_params", {})
+        screen_config = (
+            session_params.get(
+                "screen_config", {"width": DEFAULT_DISPLAY_WIDTH, "height": DEFAULT_DISPLAY_HEIGHT}
+            )
+            if session_params
+            else {"width": DEFAULT_DISPLAY_WIDTH, "height": DEFAULT_DISPLAY_HEIGHT}
+        )
+
+        return [
+            {
+                "type": "computer_use_preview",
+                "display_width": screen_config.get("width", DEFAULT_DISPLAY_WIDTH),
+                "display_height": screen_config.get("height", DEFAULT_DISPLAY_HEIGHT),
+                "environment": "browser",
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "go_to_url",
+                    "description": "Navigate to a URL. Can be used when on a blank page to go to a specific URL or search engine.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "url": {
+                                "type": "string",
+                                "description": "The fully qualified URL to navigate to",
+                            },
+                        },
+                        "required": ["url"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_current_url",
+                    "description": "Get the current URL",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {},
+                        "required": [],
+                    },
+                },
+            },
+        ]
+    else:
+        raise ValueError(f"Unknown provider: {provider}")
 
 
 def _prompt_to_sys_message(prompt: Union[str, SystemMessage, None]):
@@ -74,13 +136,9 @@ async def call_model(state: CUAState, config: RunnableConfig) -> Dict[str, Any]:
         model_kwargs={"truncation": "auto", "previous_response_id": previous_response_id},
     )
 
-    tool = {
-        "type": "computer_use_preview",
-        "display_width": DEFAULT_DISPLAY_WIDTH,
-        "display_height": DEFAULT_DISPLAY_HEIGHT,
-        "environment": get_openai_env_from_state_env(environment),
-    }
-    llm_with_tools = llm.bind_tools([tool])
+    tools = get_available_tools(configuration)
+
+    llm_with_tools = llm.bind_tools(tools)
 
     response: AIMessageChunk
 

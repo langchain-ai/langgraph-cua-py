@@ -1,9 +1,17 @@
+from enum import Enum
 import os
 from typing import Annotated, Any, Dict, List, Literal, Optional, TypedDict, Union
 
 from langchain_core.messages import AnyMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import add_messages
+
+from playwright.sync_api import Browser, Page
+
+
+class Provider(str, Enum):
+    Scrapybara = "scrapybara"
+    Hyperbrowser = "hyperbrowser"
 
 
 class Output(TypedDict):
@@ -43,6 +51,15 @@ class ComputerCallOutput(TypedDict):
     ]  # Status of the message input
 
 
+class BrowserState(TypedDict):
+    """
+    The state of the browser.
+    """
+
+    browser: Annotated[Optional[Browser], None] = None
+    current_page: Annotated[Optional[Page], None] = None
+
+
 class CUAState(TypedDict):
     """State schema for the computer use agent.
 
@@ -57,6 +74,7 @@ class CUAState(TypedDict):
     messages: Annotated[list[AnyMessage], add_messages] = []
     instance_id: Annotated[Optional[str], None] = None
     stream_url: Annotated[Optional[str], None] = None
+    browser_state: Annotated[Optional[BrowserState], None] = None
     authenticated_id: Annotated[Optional[str], None] = None
 
 
@@ -106,6 +124,13 @@ def get_configuration_with_defaults(config: RunnableConfig) -> Dict[str, Any]:
         or config.get("scrapybara_api_key")
         or os.environ.get("SCRAPYBARA_API_KEY")
     )
+    hyperbrowser_api_key = (
+        configurable_fields.get("hyperbrowser_api_key")
+        or config.get("hyperbrowser_api_key")
+        or os.environ.get("HYPERBROWSER_API_KEY")
+    )
+    provider: Provider = configurable_fields.get("provider", Provider.Scrapybara)
+    session_params = configurable_fields.get("session_params", {})
     timeout_hours = configurable_fields.get("timeout_hours", 1)
     zdr_enabled = configurable_fields.get("zdr_enabled", False)
     auth_state_id = configurable_fields.get("auth_state_id", None)
@@ -113,7 +138,10 @@ def get_configuration_with_defaults(config: RunnableConfig) -> Dict[str, Any]:
     prompt = configurable_fields.get("prompt", None)
 
     return {
+        "provider": provider,
         "scrapybara_api_key": scrapybara_api_key,
+        "hyperbrowser_api_key": hyperbrowser_api_key,
+        "session_params": session_params,
         "timeout_hours": timeout_hours,
         "zdr_enabled": zdr_enabled,
         "auth_state_id": auth_state_id,
