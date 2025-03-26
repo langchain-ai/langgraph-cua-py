@@ -25,7 +25,13 @@ pip install langgraph-cua
 
 ## Quickstart
 
-This project by default uses [Scrapybara](https://scrapybara.com/) for accessing a virtual machine to run the agent. To use LangGraph CUA, you'll need both OpenAI and Scrapybara API keys.
+This project supports two providers for accessing virtual machines:
+1. [Scrapybara](https://scrapybara.com/) (default)
+2. [Hyperbrowser](https://hyperbrowser.ai/)
+
+### Using Scrapybara (Default)
+
+To use LangGraph CUA with Scrapybara, you'll need both OpenAI and Scrapybara API keys:
 
 ```bash
 export OPENAI_API_KEY=<your_api_key>
@@ -41,7 +47,7 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-
+# Create CUA with Scrapybara (default provider)
 cua_graph = create_cua()
 
 # Define the input messages
@@ -83,7 +89,71 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-The above example will invoke the graph, passing in a request for it to do some research into LangGraph.js from the standpoint of a new contributor. The code will log the stream URL, which you can open in your browser to view the CUA stream.
+### Using Hyperbrowser
+
+To use LangGraph CUA with Hyperbrowser, you'll need both OpenAI and Hyperbrowser API keys:
+
+```bash
+export OPENAI_API_KEY=<your_api_key>
+export HYPERBROWSER_API_KEY=<your_api_key>
+```
+
+Then, create the graph specifying Hyperbrowser as the provider:
+
+```python
+from langgraph_cua import create_cua
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Create CUA with Hyperbrowser provider
+cua_graph = create_cua(provider="hyperbrowser")
+
+# Define the input messages
+messages = [
+    {
+        "role": "system",
+        "content": (
+            "You're an advanced AI computer use assistant. You are utilizing a Chrome Browser with internet access. "
+            "It is already open and running. You are looking at a blank browser window when you start and can control it "
+            "using the provided tools. If you are on a blank page, you should use the go_to_url tool to navigate to "
+            "the relevant website, or if you need to search for something, go to https://www.google.com and search for it."
+        ),
+    },
+    {
+        "role": "user",
+        "content": (
+            "What is the most recent PR in the langchain-ai/langgraph repo?"
+        ),
+    },
+]
+
+async def main():
+    # Stream the graph execution
+    stream = cua_graph.astream(
+        {"messages": messages},
+        stream_mode="updates"
+    )
+
+    # Process the stream updates
+    async for update in stream:
+        if "create_vm_instance" in update:
+            print("VM instance created")
+            stream_url = update.get("create_vm_instance", {}).get("stream_url")
+            # Open this URL in your browser to view the CUA stream
+            print(f"Stream URL: {stream_url}")
+
+    print("Done")
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(main())
+```
+
+The above example will invoke the graph, passing in a request for it to do some research into LangGraph.js from 
+the standpoint of a new contributor. The code will log the stream URL, which you can open in your browser to 
+view the CUA stream.
 
 You can find more examples inside the [`examples` directory](./examples/).
 
@@ -95,13 +165,21 @@ You can either pass these parameters when calling `create_cua`, or at runtime wh
 
 ### Configuration Parameters
 
-- `scrapybara_api_key`: The API key to use for Scrapybara. If not provided, it defaults to reading the `SCRAPYBARA_API_KEY` environment variable.
-- `timeout_hours`: The number of hours to keep the virtual machine running before it times out.
+#### Common Parameters
+- `provider`: The provider to use. Default is `"scrapybara"`. Options are `"scrapybara"` and `"hyperbrowser"`.
 - `zdr_enabled`: Whether or not Zero Data Retention is enabled in the user's OpenAI account. If `True`, the agent will not pass the `previous_response_id` to the model, and will always pass it the full message history for each request. If `False`, the agent will pass the `previous_response_id` to the model, and only the latest message in the history will be passed. Default `False`.
 - `recursion_limit`: The maximum number of recursive calls the agent can make. Default is 100. This is greater than the standard default of 25 in LangGraph, because computer use agents are expected to take more iterations.
+- `prompt`: The prompt to pass to the model. This will be passed as the system message.
+
+#### Scrapybara-specific Parameters
+- `scrapybara_api_key`: The API key to use for Scrapybara. If not provided, it defaults to reading the `SCRAPYBARA_API_KEY` environment variable.
+- `timeout_hours`: The number of hours to keep the virtual machine running before it times out.
 - `auth_state_id`: The ID of the authentication state. If defined, it will be used to authenticate with Scrapybara. Only applies if 'environment' is set to 'web'.
 - `environment`: The environment to use. Default is `web`. Options are `web`, `ubuntu`, and `windows`.
-- `prompt`: The prompt to pass to the model. This will be passed as the system message.
+
+#### Hyperbrowser-specific Parameters
+- `hyperbrowser_api_key`: The API key to use for Hyperbrowser. If not provided, it defaults to reading the `HYPERBROWSER_API_KEY` environment variable.
+- `session_params`: Parameters to use for configuring the Hyperbrowser session, such as screen dimensions, proxy usage, etc. For more information on the available parameters, see the [Hyperbrowser API documentation](https://docs.hyperbrowser.ai/sessions/overview/session-parameters). Note that the parameters will be snake_case for usage with the Hyperbrowser Python SDK.
 
 ### System Prompts
 
