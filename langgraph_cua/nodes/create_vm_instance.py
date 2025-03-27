@@ -75,6 +75,8 @@ def create_hyperbrowser_instance(state: CUAState, configuration: Dict[str, Any])
         p = sync_playwright().start()
         browser = p.chromium.connect_over_cdp(f"{session.ws_endpoint}&keepAlive=true")
         curr_page = browser.contexts[0].pages[0]
+        if curr_page.url == "about:blank":
+            curr_page.goto("https://www.google.com", timeout=15000, wait_until="domcontentloaded")
         browser_state = {
             "browser": browser,
             "current_page": curr_page,

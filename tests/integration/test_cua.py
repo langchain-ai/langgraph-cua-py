@@ -148,7 +148,7 @@ async def test_browser_interaction_hyperbrowser():
             "role": "system",
             "content": (
                 "You're an advanced AI computer use assistant. You are utilising a Chrome Browser with internet access."
-                "It is already open and running .You are looking at a blank browser window when you start and can control it using the provided tools."
+                "It is already open and running. You are looking at a browser window when you start and can control it using the provided tools."
                 "If you are on a blank page, you should use the go_to_url tool to navigate to the relevant website, "
                 "or if you need to search for something, go to https://www.google.com and search for it."
             ),
