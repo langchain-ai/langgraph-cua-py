@@ -7,7 +7,8 @@ from langgraph.config import get_stream_writer
 from openai.types.responses.response_computer_tool_call import ResponseComputerToolCall
 from scrapybara.types import ComputerResponse, InstanceGetStreamUrlResponse
 
-from ..types import CUAState, get_configuration_with_defaults
+from .take_browser_action import take_hyperbrowser_action
+from ..types import CUAState, Provider, get_configuration_with_defaults
 from ..utils import get_instance, is_computer_tool_call
 
 # Copied from the OpenAI example repository
@@ -36,7 +37,7 @@ CUA_KEY_TO_SCRAPYBARA_KEY = {
 }
 
 
-def take_computer_action(state: CUAState, config: RunnableConfig) -> Dict[str, Any]:
+def take_scrapybara_action(state: CUAState, config: RunnableConfig) -> Dict[str, Any]:
     """
     Executes computer actions based on the tool call in the last message.
 
@@ -165,3 +166,14 @@ def take_computer_action(state: CUAState, config: RunnableConfig) -> Dict[str, A
         "stream_url": stream_url,
         "authenticated_id": authenticated_id,
     }
+
+
+def take_computer_action(state: CUAState, config: RunnableConfig) -> Dict[str, Any]:
+    configuration = get_configuration_with_defaults(config)
+    provider = configuration.get("provider")
+    if provider == Provider.Scrapybara:
+        return take_scrapybara_action(state, config)
+    elif provider == Provider.Hyperbrowser:
+        return take_hyperbrowser_action(state, config)
+    else:
+        raise ValueError(f"Unknown provider: {provider}")
