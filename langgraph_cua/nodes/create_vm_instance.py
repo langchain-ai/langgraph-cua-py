@@ -59,8 +59,7 @@ def create_scrapybara_instance(configuration: Dict[str, Any]):
 
 def create_hyperbrowser_instance(state: CUAState, configuration: Dict[str, Any]):
     hyperbrowser_api_key = configuration.get("hyperbrowser_api_key")
-    session_params = configuration.get("session_params", {})
-    browser_state = state.get("browser_state")
+    session_params = configuration.get("session_params", {}) or {}
 
     if not hyperbrowser_api_key:
         raise ValueError(
@@ -71,21 +70,22 @@ def create_hyperbrowser_instance(state: CUAState, configuration: Dict[str, Any])
     client = get_hyperbrowser_client(hyperbrowser_api_key)
     session: SessionDetail = client.sessions.create(params=CreateSessionParams(**session_params))
 
-    if not browser_state:
+    if session.ws_endpoint:
         p = sync_playwright().start()
         browser = p.chromium.connect_over_cdp(f"{session.ws_endpoint}&keepAlive=true")
         curr_page = browser.contexts[0].pages[0]
         if curr_page.url == "about:blank":
             curr_page.goto("https://www.google.com", timeout=15000, wait_until="domcontentloaded")
-        browser_state = {
-            "browser": browser,
-            "current_page": curr_page,
+
+    if not state.get("stream_url"):
+        stream_url = session.live_url
+        return {
+            "instance_id": session.id,
+            "stream_url": stream_url,
         }
 
     return {
         "instance_id": session.id,
-        "stream_url": session.live_url,
-        "browser_state": browser_state,
     }
 
 

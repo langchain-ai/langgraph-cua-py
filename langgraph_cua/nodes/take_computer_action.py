@@ -168,12 +168,12 @@ def take_scrapybara_action(state: CUAState, config: RunnableConfig) -> Dict[str,
     }
 
 
-def take_computer_action(state: CUAState, config: RunnableConfig) -> Dict[str, Any]:
+async def take_computer_action(state: CUAState, config: RunnableConfig) -> Dict[str, Any]:
     configuration = get_configuration_with_defaults(config)
     provider = configuration.get("provider")
     if provider == Provider.Scrapybara:
         return take_scrapybara_action(state, config)
     elif provider == Provider.Hyperbrowser:
-        return take_hyperbrowser_action(state, config)
+        return await take_hyperbrowser_action(state, config)
     else:
         raise ValueError(f"Unknown provider: {provider}")

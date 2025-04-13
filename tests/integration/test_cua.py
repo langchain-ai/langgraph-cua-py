@@ -25,7 +25,7 @@ async def process_stream(stream):
             tool_message = update.get("take_computer_action", {}).get("messages")
             if tool_message:
                 # Extract content from the tool message
-                content = tool_message.content
+                content = tool_message.get("content")
 
                 # Handle the case where content is an array
                 if isinstance(content, list) and len(content) > 0:
@@ -64,7 +64,7 @@ async def process_stream(stream):
                     content_copy["image_url"] = (
                         image_url[:100] + "..." if len(image_url) > 100 else image_url
                     )
-                    print(f"Tool Message ID: {tool_message.tool_call_id}")
+                    print(f"Tool Message ID: {tool_message.get('tool_call_id')}")
                     # Print the truncated content explicitly
                     print(f"Content type: {content_copy.get('type')}")
                     print(f"Image URL (truncated): {content_copy['image_url']}")
