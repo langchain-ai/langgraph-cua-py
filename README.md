@@ -141,7 +141,8 @@ async def main():
     # Stream the graph execution
     stream = cua_graph.astream(
         {"messages": messages},
-        stream_mode="updates"
+        stream_mode="updates",
+        config={"configurable": {"provider": "hyperbrowser"}}
     )
 
     # Process the stream updates
