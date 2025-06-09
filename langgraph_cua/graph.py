@@ -4,7 +4,7 @@ from langchain_core.messages import SystemMessage
 from langgraph.graph import END, START, StateGraph
 
 from langgraph_cua.nodes import call_model, create_vm_instance, take_computer_action
-from langgraph_cua.types import CUAConfiguration, CUAState
+from langgraph_cua.types import CUAConfiguration, CUAState, Provider
 from langgraph_cua.utils import is_computer_tool_call
 
 
@@ -30,7 +30,10 @@ def take_action_or_end(state: CUAState):
 
     tool_outputs = additional_kwargs.get("tool_outputs")
 
-    if not is_computer_tool_call(tool_outputs):
+    # Function calls are stored in the `tool_calls` attribute of the last message
+    tool_calls = getattr(last_message, "tool_calls", [])
+
+    if not is_computer_tool_call(tool_outputs) and len(tool_calls) == 0:
         return END
 
     if not state.get("instance_id"):
@@ -75,7 +78,10 @@ graph.name = "Computer Use Agent"
 
 def create_cua(
     *,
+    provider: Provider = Provider.Scrapybara,
     scrapybara_api_key: str = None,
+    hyperbrowser_api_key: str = None,
+    session_params: dict = {},
     timeout_hours: float = 1.0,
     zdr_enabled: bool = False,
     recursion_limit: int = 100,
@@ -86,8 +92,14 @@ def create_cua(
     """Configuration for the Computer Use Agent.
 
     Attributes:
+        provider: The provider to use. Default is "scrapybara".
         scrapybara_api_key: The API key to use for Scrapybara.
             This can be provided in the configuration, or set as an environment variable (SCRAPYBARA_API_KEY).
+        hyperbrowser_api_key: The API key to use for Hyperbrowser.
+            This can be provided in the configuration, or set as an environment variable (HYPERBROWSER_API_KEY).
+            Only applies if 'provider' is set to "hyperbrowser".
+        session_params: The parameters to use for the Hyperbrowser browser session.
+            Only applies if 'provider' is set to "hyperbrowser".
         timeout_hours: The number of hours to keep the virtual machine running before it times out.
             Must be between 0.01 and 24. Default is 1.
         zdr_enabled: Whether or not Zero Data Retention is enabled in the user's OpenAI account. If True,
@@ -107,12 +119,15 @@ def create_cua(
     configured_graph = graph.with_config(
         config={
             "configurable": {
+                "provider": provider,
                 "scrapybara_api_key": scrapybara_api_key,
                 "timeout_hours": timeout_hours,
                 "zdr_enabled": zdr_enabled,
                 "auth_state_id": auth_state_id,
                 "environment": environment,
                 "prompt": prompt,
+                "hyperbrowser_api_key": hyperbrowser_api_key,
+                "session_params": session_params,
             },
             "recursion_limit": recursion_limit,
         }

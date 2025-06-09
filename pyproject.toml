@@ -15,7 +15,9 @@ dependencies = [
     "langgraph>=0.3.17,<0.4.0",
     "langchain-core>=0.3.46,<0.4.0",
     "scrapybara>=2.4.1,<3.0.0",
-    "langchain-openai>=0.3.10,<0.4.0"
+    "langchain-openai>=0.3.10,<0.4.0",
+    "hyperbrowser>=0.38.0",
+    "playwright>=1.51.0",
 ]
 
 [dependency-groups]
