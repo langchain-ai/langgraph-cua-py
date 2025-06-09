@@ -90,6 +90,31 @@ def get_available_tools(configuration: Dict[str, Any]) -> List[Dict[str, Any]]:
                     },
                 },
             },
+            {
+                "type": "function",
+                "function": {
+                    "name": "upload_file_to_element",
+                    "description": "Upload a file to an element on the page.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "file_path": {
+                                "type": "string",
+                                "description": "The path to the file on the computer to upload",
+                            },
+                            "x": {
+                                "type": "number",
+                                "description": "The x coordinate of the element to upload the file to",
+                            },
+                            "y": {
+                                "type": "number",
+                                "description": "The y coordinate of the element to upload the file to",
+                            },
+                        },
+                        "required": ["file_path", "x", "y"],
+                    },
+                }
+            }
         ]
     else:
         raise ValueError(f"Unknown provider: {provider}")

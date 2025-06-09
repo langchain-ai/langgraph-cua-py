@@ -1,3 +1,4 @@
+import asyncio
 import base64
 from math import floor
 from random import random
@@ -7,7 +8,7 @@ from typing import Any, Dict, Optional
 from langchain_core.messages import AnyMessage, ToolMessage, ToolCall
 from langchain_core.runnables import RunnableConfig
 from langgraph.config import get_stream_writer
-from playwright.async_api import Page, async_playwright
+from playwright.async_api import Page, async_playwright, BrowserContext
 from openai.types.responses.response_computer_tool_call import ResponseComputerToolCall
 
 from ..utils import get_instance, is_computer_tool_call
@@ -41,8 +42,6 @@ CUA_KEY_TO_PLAYWRIGHT_KEY = {
     "win": "Meta",
 }
 
-DUMMY_SCREENSHOT = "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q=="
-
 
 def _translate_key(key: str) -> str:
     return CUA_KEY_TO_PLAYWRIGHT_KEY.get(key.lower(), key)
@@ -55,7 +54,7 @@ async def handle_function_tool_call(page: Page, function_tool_call: ToolCall) ->
 
     if name == "go_to_url":
         await page.goto(arguments.get("url"), timeout=15000, wait_until="load")
-        time.sleep(1)
+        await asyncio.sleep(1)
         return {
             "role": "tool",
             "tool_call_id": call_id,
@@ -69,11 +68,39 @@ async def handle_function_tool_call(page: Page, function_tool_call: ToolCall) ->
             "content": [{"message": f"The current URL is {page.url}"}],
             "additional_kwargs": {"type": "function_call_output"},
         }
+    elif name == "upload_file_to_element":
+        file_path = arguments.get("file_path")
+        x = arguments.get("x")
+        y = arguments.get("y")
+        cdp_session = await page.context.new_cdp_session(page)
+        resp = await cdp_session.send("DOM.getNodeForLocation", {
+            "x": x,
+            "y": y,
+        })
+        backend_id = resp["backendNodeId"]
+
+        if not backend_id:
+            raise ValueError(f"No element found at x={x}, y={y}")
+
+        await cdp_session.send("DOM.setFileInputFiles", {
+                "backendNodeId": backend_id,
+                "files": [file_path]
+        })
+
+        await asyncio.sleep(3)
+        await cdp_session.detach()
+
+        return {
+            "role": "tool",
+            "tool_call_id": call_id,
+            "content": [{"message": f"Uploaded file {file_path} to element at x={x}, y={y}"}],
+            "additional_kwargs": {"type": "function_call_output"},
+        }
     else:
         raise ValueError(f"Unknown function call name: {name}")
 
 
-async def handle_computer_call(page: Page, computer_call: dict):
+async def handle_computer_call(page: Page, context: BrowserContext, computer_call: dict):
     action = computer_call.get("action")
     call_id = computer_call.get("call_id")
     action_type = action.get("type")
@@ -109,7 +136,7 @@ async def handle_computer_call(page: Page, computer_call: dict):
         text = action.get("text")
         await page.keyboard.type(text)
     elif action_type == "wait":
-        time.sleep(2)
+        pass
     elif action_type == "screenshot":
         pass
     elif action_type == "double_click":
@@ -122,7 +149,7 @@ async def handle_computer_call(page: Page, computer_call: dict):
         await page.mouse.down()
         for point in path[1:]:
             page.mouse.move(point.get("x"), point.get("y"))
-            time.sleep(40 + floor(random() * 40))
+            await asyncio.sleep(40 + floor(random() * 40))
         await page.mouse.up()
     elif action_type == "move":
         x = action.get("x")
@@ -131,7 +158,8 @@ async def handle_computer_call(page: Page, computer_call: dict):
     else:
         raise ValueError(f"Unknown action type received: {action_type}")
 
-    time.sleep(3)
+    await asyncio.sleep(3)
+    page = context.pages[-1]
     screenshot = await page.screenshot(timeout=15000)
     b64_screenshot = base64.b64encode(screenshot).decode("utf-8")
     screenshot_url = f"data:image/png;base64,{b64_screenshot}"
@@ -179,7 +207,8 @@ async def take_hyperbrowser_action(state: CUAState, config: RunnableConfig) -> D
 
     p = await async_playwright().start()
     browser = await p.chromium.connect_over_cdp(f"{instance.ws_endpoint}&keepAlive=true")
-    page = browser.contexts[0].pages[-1]
+    context = browser.contexts[0]
+    page = context.pages[-1]
 
     stream_url: Optional[str] = state.get("stream_url")
     if not stream_url:
@@ -199,12 +228,12 @@ async def take_hyperbrowser_action(state: CUAState, config: RunnableConfig) -> D
         except Exception as e:
             print(f"\n\nFailed to execute function call: {e}\n\n")
             print(f"Function call details: {tool_call}\n\n")
-        time.sleep(1)
+        await asyncio.sleep(1)
 
     if output:
         if output.get("type") == "computer_call":
             try:
-                tool_message = await handle_computer_call(page, output)
+                tool_message = await handle_computer_call(page, context, output)
             except Exception as e:
                 print(f"\n\nFailed to execute computer call: {e}\n\n")
                 print(f"Computer call details: {output}\n\n")
