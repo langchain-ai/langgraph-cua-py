@@ -7,7 +7,8 @@ from typing import List, Literal
 
 from dotenv import load_dotenv
 from langchain_core.messages import AnyMessage
-from langchain_openai import ChatOpenAI
+# from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
 from langgraph.graph import END, START, StateGraph
 from pydantic import BaseModel, Field
 
@@ -55,7 +56,8 @@ def process_input(state: PriceFinderState):
             description="The node to route to, either 'computer_use_agent' for any input which might require using a computer to assist the user, or 'respond' for any other input",
         )
 
-    model = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    model = ChatAnthropic(model="claude-sonnet-4-5",
+                            temperature=0)
     model_with_tools = model.with_structured_output(RoutingToolSchema)
 
     messages = [system_message, {"role": "user", "content": state.get("messages")[-1].content}]
@@ -95,8 +97,7 @@ def respond(state: PriceFinderState):
         + format_messages(state.get("messages")),
     }
 
-    model = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-
+    model = ChatAnthropic(model="claude-sonnet-4-5", temperature=0)
     response = model.invoke([system_message, human_message])
     return {"response": response}
 
@@ -142,13 +143,17 @@ async def main():
         {
             "role": "user",
             "content": (
-                "Can you find the best price for new all season tires which will fit on my 2019 Subaru Forester?"
+                "Can you go to athenaintel.com and tell me what jobs openings are available? Do not ask me any questions or preferences, just use your best judgment. And if you encounter any captcha, just go straight to the site and don't use google.com. Basically do not bother me with any questions, just use your best judgment."
             ),
         },
     ]
 
     # Stream the graph execution with updates visible
-    stream = graph.astream({"messages": messages}, subgraphs=True, stream_mode="updates")
+    stream = graph.astream({"messages": messages}, subgraphs=True, stream_mode="updates", 
+        config={
+                "configurable": {"zdr_enabled": True},
+                "recursion_limit": 1000,
+            })
     print("Stream started")
 
     # Process and display the stream updates

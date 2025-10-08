@@ -19,18 +19,26 @@ def take_action_or_end(state: CUAState):
     Returns:
         "take_computer_action" or END depending on if a computer call is present.
     """
+    print("take_action_or_end///")
+
     if not state.get("messages", []):
         return END
 
     last_message = state.get("messages", [])[-1]
-    additional_kwargs = getattr(last_message, "additional_kwargs", None)
-
-    if not additional_kwargs:
+    
+    # Check for tool calls in the message (Anthropic format)
+    tool_calls = getattr(last_message, "tool_calls", [])
+    
+    if not tool_calls:
         return END
-
-    tool_outputs = additional_kwargs.get("tool_outputs")
-
-    if not is_computer_tool_call(tool_outputs):
+    
+    # Check if any tool call is a computer tool call
+    has_computer_call = any(
+        tool_call.get("name") == "computer" 
+        for tool_call in tool_calls
+    )
+    
+    if not has_computer_call:
         return END
 
     if not state.get("instance_id"):

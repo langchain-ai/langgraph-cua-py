@@ -49,14 +49,12 @@ def take_computer_action(state: CUAState, config: RunnableConfig) -> Dict[str, A
     """
     message: AnyMessage = state.get("messages", [])[-1]
     assert message.type == "ai", "Last message must be an AI message"
-    tool_outputs = message.additional_kwargs.get("tool_outputs")
+    
+    # Anthropic format: tool_calls is a list of tool call dicts
+    tool_outputs = message.tool_calls
 
     if not is_computer_tool_call(tool_outputs):
-        # This should never happen, but include the check for proper type safety.
         raise ValueError("Cannot take computer action without a computer call in the last message.")
-
-    # Cast tool_outputs as list[ResponseComputerToolCall] since is_computer_tool_call is true
-    tool_outputs: list[ResponseComputerToolCall] = tool_outputs
 
     instance_id = state.get("instance_id")
     if not instance_id:
@@ -89,41 +87,53 @@ def take_computer_action(state: CUAState, config: RunnableConfig) -> Dict[str, A
         writer = get_stream_writer()
         writer({"stream_url": stream_url})
 
+    # Anthropic format: tool_calls have 'args' containing the action, and 'id' for tool_call_id
     output = tool_outputs[-1]
-    action = output.get("action")
+    action = output["args"]
+    tool_call_id = output["id"]
+    action_type = action["action"]
+    
     tool_message: Optional[ToolMessage] = None
 
     try:
         computer_response: Optional[ComputerResponse] = None
-        action_type = action.get("type")
 
-        if action_type == "click":
+        if action_type == "left_click":
             computer_response = instance.computer(
                 action="click_mouse",
-                button="middle" if action.get("button") == "wheel" else action.get("button"),
-                coordinates=[action.get("x"), action.get("y")],
+                button="left",
+                coordinates=action["coordinate"],
+            )
+        elif action_type == "right_click":
+            computer_response = instance.computer(
+                action="click_mouse",
+                button="right",
+                coordinates=action["coordinate"],
+            )
+        elif action_type == "middle_click":
+            computer_response = instance.computer(
+                action="click_mouse",
+                button="middle",
+                coordinates=action["coordinate"],
             )
         elif action_type == "double_click":
             computer_response = instance.computer(
                 action="click_mouse",
                 button="left",
-                coordinates=[action.get("x"), action.get("y")],
+                coordinates=action["coordinate"],
                 num_clicks=2,
             )
-        elif action_type == "drag":
+        elif action_type == "triple_click":
             computer_response = instance.computer(
-                action="drag_mouse",
-                path=[[point.get("x"), point.get("y")] for point in action.get("path")],
+                action="click_mouse",
+                button="left",
+                coordinates=action["coordinate"],
+                num_clicks=3,
             )
-        elif action_type == "keypress":
-            mapped_keys = [
-                CUA_KEY_TO_SCRAPYBARA_KEY.get(key.lower(), key.lower())
-                for key in action.get("keys")
-            ]
-            computer_response = instance.computer(action="press_key", keys=mapped_keys)
-        elif action_type == "move":
+        elif action_type == "cursor_position":
             computer_response = instance.computer(
-                action="move_mouse", coordinates=[action.get("x"), action.get("y")]
+                action="move_mouse", 
+                coordinates=action["coordinate"]
             )
         elif action_type == "screenshot":
             computer_response = instance.computer(action="take_screenshot")
@@ -133,12 +143,32 @@ def take_computer_action(state: CUAState, config: RunnableConfig) -> Dict[str, A
             # Take a screenshot after waiting
             computer_response = instance.computer(action="take_screenshot")
         elif action_type == "scroll":
+            # Anthropic format: scroll_direction ('up', 'down', 'left', 'right') and scroll_amount
+            direction = action.get("scroll_direction", "down")
+            amount = action.get("scroll_amount", 3)
+            
+            # Convert direction to delta_x and delta_y
+            delta_x = 0
+            delta_y = 0
+            if direction == "down":
+                delta_y = amount
+            elif direction == "up":
+                delta_y = -amount
+            elif direction == "right":
+                delta_x = amount
+            elif direction == "left":
+                delta_x = -amount
+                
             computer_response = instance.computer(
                 action="scroll",
-                delta_x=action.get("scroll_x") // 20,
-                delta_y=action.get("scroll_y") // 20,
-                coordinates=[action.get("x"), action.get("y")],
+                delta_x=delta_x,
+                delta_y=delta_y,
+                coordinates=action["coordinate"],
             )
+        elif action_type == "key":
+            text = action["text"]
+            mapped_key = CUA_KEY_TO_SCRAPYBARA_KEY.get(text.lower(), text)
+            computer_response = instance.computer(action="press_key", keys=[mapped_key])
         elif action_type == "type":
             computer_response = instance.computer(action="type_text", text=action.get("text"))
         else:
@@ -146,13 +176,17 @@ def take_computer_action(state: CUAState, config: RunnableConfig) -> Dict[str, A
 
         if computer_response:
             output_content = {
-                "type": "input_image",
-                "image_url": f"data:image/png;base64,{computer_response.base_64_image}",
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": "image/png",
+                    "data": computer_response.base_64_image,
+                }
             }
             tool_message = {
                 "role": "tool",
                 "content": [output_content],
-                "tool_call_id": output.get("call_id"),
+                "tool_call_id": tool_call_id,
                 "additional_kwargs": {"type": "computer_call_output"},
             }
     except Exception as e:

@@ -1,8 +1,11 @@
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, Literal
 
 from langchain_core.messages import AIMessageChunk, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
-from langchain_openai import ChatOpenAI
+# from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
+from pydantic import BaseModel, Field
+
 
 from ..types import CUAState, get_configuration_with_defaults
 
@@ -69,16 +72,17 @@ async def call_model(state: CUAState, config: RunnableConfig) -> Dict[str, Any]:
         ):
             previous_response_id = messages[-2].response_metadata["id"]
 
-    llm = ChatOpenAI(
-        model="computer-use-preview",
-        model_kwargs={"truncation": "auto", "previous_response_id": previous_response_id},
-    )
+    print("We are calling the MODEL NOW!!!")
 
+    llm = ChatAnthropic(model="claude-sonnet-4-5",
+                            temperature=0,
+                            betas=["computer-use-2025-01-24"])
     tool = {
-        "type": "computer_use_preview",
-        "display_width": DEFAULT_DISPLAY_WIDTH,
-        "display_height": DEFAULT_DISPLAY_HEIGHT,
-        "environment": get_openai_env_from_state_env(environment),
+        "type": "computer_20250124",
+        "name": "computer",
+        "display_width_px": DEFAULT_DISPLAY_WIDTH,
+        "display_height_px": DEFAULT_DISPLAY_HEIGHT,
+        "display_number": 1,
     }
     llm_with_tools = llm.bind_tools([tool])
 

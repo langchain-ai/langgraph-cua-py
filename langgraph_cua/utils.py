@@ -47,15 +47,15 @@ def get_instance(
 
 def is_computer_tool_call(tool_outputs: Any) -> bool:
     """
-    Checks if the given tool outputs are a computer call.
+    Checks if the given tool outputs are a computer call (Anthropic format).
 
     Args:
-        tool_outputs: The tool outputs to check.
+        tool_outputs: List of tool call dicts from Anthropic.
 
     Returns:
-        True if the tool outputs are a computer call, false otherwise.
+        True if the tool outputs contain a computer call, false otherwise.
     """
     if not tool_outputs or not isinstance(tool_outputs, list):
         return False
 
-    return any(output.get("type") == "computer_call" for output in tool_outputs)
+    return any(tc.get("name") == "computer" for tc in tool_outputs)
