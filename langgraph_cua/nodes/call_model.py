@@ -72,8 +72,6 @@ async def call_model(state: CUAState, config: RunnableConfig) -> Dict[str, Any]:
         ):
             previous_response_id = messages[-2].response_metadata["id"]
 
-    print("We are calling the MODEL NOW!!!")
-
     llm = ChatAnthropic(model="claude-sonnet-4-5",
                             temperature=0,
                             betas=["computer-use-2025-01-24"])
