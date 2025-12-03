@@ -25,11 +25,11 @@ pip install langgraph-cua
 
 ## Quickstart
 
-This project by default uses [Scrapybara](https://scrapybara.com/) for accessing a virtual machine to run the agent. To use LangGraph CUA, you'll need both OpenAI and Scrapybara API keys.
+This project by default uses [Scrapybara](https://scrapybara.com/) for accessing a virtual machine to run the agent, and [OpenRouter](https://openrouter.ai/) for the LLM (using Grok model). To use LangGraph CUA, you'll need both an API key and Scrapybara API key.
 
 ```bash
-export OPENAI_API_KEY=<your_api_key>
-export SCRAPYBARA_API_KEY=<your_api_key>
+export OPENAI_API_KEY=<your_openrouter_api_key>
+export SCRAPYBARA_API_KEY=<your_scrapybara_api_key>
 ```
 
 Then, create the graph by importing the `create_cua` function from the `langgraph_cua` module.
@@ -87,6 +87,36 @@ The above example will invoke the graph, passing in a request for it to do some 
 
 You can find more examples inside the [`examples` directory](./examples/).
 
+## LLM Providers
+
+This library supports multiple LLM providers through OpenAI-compatible APIs:
+
+### OpenAI (Default)
+The library works with OpenAI's API directly. Set your OpenAI API key:
+
+```bash
+export OPENAI_API_KEY=<your_openai_api_key>
+```
+
+### OpenRouter
+The library also supports [OpenRouter](https://openrouter.ai/) as an alternative provider, offering access to various models including Grok. The current implementation uses OpenRouter by default with the `x-ai/grok-4.1-fast:free` model.
+
+To use OpenRouter, set the following environment variables:
+
+```bash
+export OPENAI_API_KEY=<your_openrouter_api_key>
+export OPENAI_BASE_URL=https://openrouter.ai/api/v1
+```
+
+Or use the dedicated OpenRouter key:
+
+```bash
+export OPENROUTER_API_KEY=<your_openrouter_api_key>
+```
+
+> [!NOTE]
+> The library automatically detects and uses OpenRouter API keys. Unit tests are available to verify OpenRouter integration.
+
 ## How to customize
 
 The `create_cua` function accepts a few configuration parameters. These are the same configuration parameters that the graph accepts, along with `recursion_limit`.
@@ -97,7 +127,7 @@ You can either pass these parameters when calling `create_cua`, or at runtime wh
 
 - `scrapybara_api_key`: The API key to use for Scrapybara. If not provided, it defaults to reading the `SCRAPYBARA_API_KEY` environment variable.
 - `timeout_hours`: The number of hours to keep the virtual machine running before it times out.
-- `zdr_enabled`: Whether or not Zero Data Retention is enabled in the user's OpenAI account. If `True`, the agent will not pass the `previous_response_id` to the model, and will always pass it the full message history for each request. If `False`, the agent will pass the `previous_response_id` to the model, and only the latest message in the history will be passed. Default `False`.
+- `zdr_enabled`: Whether or not Zero Data Retention is enabled. If `True`, the agent will not pass the `previous_response_id` to the model, and will always pass it the full message history for each request. If `False`, the agent will pass the `previous_response_id` to the model, and only the latest message in the history will be passed. Default `False`.
 - `recursion_limit`: The maximum number of recursive calls the agent can make. Default is 100. This is greater than the standard default of 25 in LangGraph, because computer use agents are expected to take more iterations.
 - `auth_state_id`: The ID of the authentication state. If defined, it will be used to authenticate with Scrapybara. Only applies if 'environment' is set to 'web'.
 - `environment`: The environment to use. Default is `web`. Options are `web`, `ubuntu`, and `windows`.
@@ -189,7 +219,7 @@ instance.modify_auth(auth_state_id="your_existing_auth_state_id", name="renamed_
 
 ## Zero Data Retention (ZDR)
 
-LangGraph CUA supports Zero Data Retention (ZDR) via the `zdr_enabled` configuration parameter. When set to true, the graph will _not_ assume it can use the `previous_message_id`, and _all_ AI & tool messages will be passed to the OpenAI on each request.
+LangGraph CUA supports Zero Data Retention (ZDR) via the `zdr_enabled` configuration parameter. When set to true, the graph will _not_ assume it can use the `previous_message_id`, and _all_ AI & tool messages will be passed to the LLM provider (OpenAI or OpenRouter) on each request.
 
 ## Development
 

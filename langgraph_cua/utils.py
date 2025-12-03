@@ -58,4 +58,4 @@ def is_computer_tool_call(tool_outputs: Any) -> bool:
     if not tool_outputs or not isinstance(tool_outputs, list):
         return False
 
-    return any(output.get("type") == "computer_call" for output in tool_outputs)
+    return any(call.get("function", {}).get("name") == "computer_use" for call in tool_outputs)

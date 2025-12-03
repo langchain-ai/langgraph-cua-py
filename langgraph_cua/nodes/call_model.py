@@ -1,3 +1,5 @@
+import json
+import os
 from typing import Any, Dict, Optional, Union
 
 from langchain_core.messages import AIMessageChunk, SystemMessage
@@ -70,15 +72,40 @@ async def call_model(state: CUAState, config: RunnableConfig) -> Dict[str, Any]:
             previous_response_id = messages[-2].response_metadata["id"]
 
     llm = ChatOpenAI(
-        model="computer-use-preview",
-        model_kwargs={"truncation": "auto", "previous_response_id": previous_response_id},
+        model="x-ai/grok-4.1-fast:free",
+        openai_api_base="https://openrouter.ai/api/v1",
+        openai_api_key=os.getenv("OPENAI_API_KEY"),
+        max_tokens=4000,
     )
 
     tool = {
-        "type": "computer_use_preview",
-        "display_width": DEFAULT_DISPLAY_WIDTH,
-        "display_height": DEFAULT_DISPLAY_HEIGHT,
-        "environment": get_openai_env_from_state_env(environment),
+        "type": "function",
+        "function": {
+            "name": "computer_use",
+            "description": "Perform actions on the computer such as clicking, typing, scrolling, etc.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["click", "double_click", "drag", "keypress", "move", "screenshot", "wait", "scroll", "type"],
+                        "description": "The type of action to perform"
+                    },
+                    "x": {"type": "number", "description": "X coordinate for mouse actions"},
+                    "y": {"type": "number", "description": "Y coordinate for mouse actions"},
+                    "text": {"type": "string", "description": "Text to type"},
+                    "button": {"type": "string", "description": "Mouse button (left, right, middle)"},
+                    "keys": {"type": "array", "items": {"type": "string"}, "description": "Keys to press"},
+                    "path": {"type": "array", "items": {"type": "object", "properties": {"x": {"type": "number"}, "y": {"type": "number"}}}, "description": "Path for drag action"},
+                    "scroll_x": {"type": "number", "description": "Horizontal scroll amount"},
+                    "scroll_y": {"type": "number", "description": "Vertical scroll amount"},
+                    "environment": {"type": "string", "description": "Environment type"},
+                    "display_width": {"type": "number", "description": "Display width"},
+                    "display_height": {"type": "number", "description": "Display height"},
+                },
+                "required": ["action"]
+            }
+        }
     }
     llm_with_tools = llm.bind_tools([tool])
 
@@ -100,4 +127,5 @@ async def call_model(state: CUAState, config: RunnableConfig) -> Dict[str, Any]:
 
     return {
         "messages": response,
+        "tool_outputs": response.additional_kwargs.get("tool_calls", []),
     }
