@@ -1,10 +1,10 @@
+import json
 import time
 from typing import Any, Dict, Optional
 
 from langchain_core.messages import AnyMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.config import get_stream_writer
-from openai.types.responses.response_computer_tool_call import ResponseComputerToolCall
 from scrapybara.types import ComputerResponse, InstanceGetStreamUrlResponse
 
 from ..types import CUAState, get_configuration_with_defaults
@@ -49,14 +49,25 @@ def take_computer_action(state: CUAState, config: RunnableConfig) -> Dict[str, A
     """
     message: AnyMessage = state.get("messages", [])[-1]
     assert message.type == "ai", "Last message must be an AI message"
-    tool_outputs = message.additional_kwargs.get("tool_outputs")
+    tool_calls = message.additional_kwargs.get("tool_outputs")
 
-    if not is_computer_tool_call(tool_outputs):
+    if not is_computer_tool_call(tool_calls):
         # This should never happen, but include the check for proper type safety.
         raise ValueError("Cannot take computer action without a computer call in the last message.")
 
-    # Cast tool_outputs as list[ResponseComputerToolCall] since is_computer_tool_call is true
-    tool_outputs: list[ResponseComputerToolCall] = tool_outputs
+    # Find the computer use call
+    computer_call = None
+    for call in tool_calls:
+        if call.get("function", {}).get("name") == "computer_use":
+            computer_call = call
+            break
+
+    if not computer_call:
+        raise ValueError("No computer use call found")
+
+    args = json.loads(computer_call["function"]["arguments"])
+    action = args
+    call_id = computer_call["id"]
 
     instance_id = state.get("instance_id")
     if not instance_id:
@@ -89,13 +100,11 @@ def take_computer_action(state: CUAState, config: RunnableConfig) -> Dict[str, A
         writer = get_stream_writer()
         writer({"stream_url": stream_url})
 
-    output = tool_outputs[-1]
-    action = output.get("action")
     tool_message: Optional[ToolMessage] = None
 
     try:
         computer_response: Optional[ComputerResponse] = None
-        action_type = action.get("type")
+        action_type = action.get("action")
 
         if action_type == "click":
             computer_response = instance.computer(
@@ -152,12 +161,12 @@ def take_computer_action(state: CUAState, config: RunnableConfig) -> Dict[str, A
             tool_message = {
                 "role": "tool",
                 "content": [output_content],
-                "tool_call_id": output.get("call_id"),
+                "tool_call_id": call_id,
                 "additional_kwargs": {"type": "computer_call_output"},
             }
     except Exception as e:
         print(f"\n\nFailed to execute computer call: {e}\n\n")
-        print(f"Computer call details: {output}\n\n")
+        print(f"Computer call details: {computer_call}\n\n")
 
     return {
         "messages": tool_message if tool_message else None,
